@@ -110,6 +110,38 @@ def test_on_before_render(time_ms_mock):
     assert value == 1
 
 
+def test_on_before_render_no_timings():
+    """
+    If ``request.timings`` doesn't exist, don't add timings when handling
+    ``BeforeRender``.
+    """
+    from pyramid.testing import DummyRequest
+
+    request = DummyRequest()
+    before_render_event = mock.Mock()
+    before_render_event = {'request': request}
+    request.registry.datadog = mock.Mock()
+
+    on_before_render(before_render_event)
+
+    before_render_event['request'].registry.datadog.timing.assert_not_called()
+
+
+@patch('pyramid_datadog.time_ms')
+def test_on_before_render_no_view_code_start(time_ms_mock):
+    before_render_event = mock.Mock()
+    before_render_event = {'request': mock.Mock()}
+    timings = before_render_event['request'].timings = {}
+    before_render_event['request'].matched_route.name = 'route_name'
+    time_ms_mock.return_value = 4
+
+    on_before_render(before_render_event)
+
+    assert timings == {'before_render_start': 4}
+
+    before_render_event['request'].registry.datadog.timing.assert_not_called()
+
+
 @patch('pyramid_datadog.time_ms')
 def test_on_new_response(time_ms_mock):
     new_response_event = mock.Mock()
@@ -126,6 +158,22 @@ def test_on_new_response(time_ms_mock):
         mock.call(mock.ANY, 1, tags=mock.ANY),
         mock.call(mock.ANY, 4, tags=mock.ANY),
     ])
+
+
+def test_on_new_response_no_timings():
+    """
+    If ``request.timings`` doesn't exist, don't add timings when handling
+    ``NewResponse``.
+    """
+    from pyramid.testing import DummyRequest
+
+    new_response_event = mock.Mock()
+    new_response_event.request = DummyRequest()
+    new_response_event.request.registry.datadog = mock.Mock()
+
+    on_new_response(new_response_event)
+
+    new_response_event.request.registry.datadog.timing.assert_not_called()
 
 
 @patch('time.time')
