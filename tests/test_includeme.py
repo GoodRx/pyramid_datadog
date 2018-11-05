@@ -143,6 +143,26 @@ def test_on_before_render_no_view_code_start(time_ms_mock):
 
 
 @patch('pyramid_datadog.time_ms')
+def test_on_before_render_no_matched_route(time_ms_mock):
+    before_render_event = mock.Mock()
+    before_render_event = {'request': mock.Mock()}
+
+    before_render_event['request'].matched_route = None
+
+    timings = before_render_event['request'].timings = {}
+    timings['view_code_start'] = 3
+    time_ms_mock.return_value = 4
+
+    on_before_render(before_render_event)
+
+    assert timings['view_duration'] == 1
+    assert timings['before_render_start'] == 4
+
+    (metric, value), kwargs = before_render_event['request'].registry.datadog.timing.call_args
+    assert value == 1
+
+
+@patch('pyramid_datadog.time_ms')
 def test_on_new_response(time_ms_mock):
     new_response_event = mock.Mock()
     time_ms_mock.return_value = 5
